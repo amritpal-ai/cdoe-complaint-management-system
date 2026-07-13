@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — CDOE Complaint Management{% endblock %}
+
+{% block content %}
+
+    <!-- Status summary cards (wired to real counts starting Phase 2) -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="card text-center border-primary">
+                <div class="card-body">
+                    <h6 class="card-subtitle text-muted mb-1">New</h6>
+                    <h3 class="card-title mb-0">—</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card text-center border-warning">
+                <div class="card-body">
+                    <h6 class="card-subtitle text-muted mb-1">In Progress</h6>
+                    <h3 class="card-title mb-0">—</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card text-center border-success">
+                <div class="card-body">
+                    <h6 class="card-subtitle text-muted mb-1">Closed</h6>
+                    <h3 class="card-title mb-0">—</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card text-center border-danger">
+                <div class="card-body">
+                    <h6 class="card-subtitle text-muted mb-1">Reopened</h6>
+                    <h3 class="card-title mb-0">—</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toolbar placeholder: search box, New Ticket button, Sync Emails button
+         will live here starting Phase 2 / Phase 6 -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0">Tickets</h5>
+        <div class="text-muted small">
+            Search, "New Ticket", and "Sync Emails" controls arrive in later phases.
+        </div>
+    </div>
+
+    <!-- Placeholder card confirming the scaffold boots end-to-end -->
+    <div class="alert alert-secondary" role="alert">
+        <strong>Phase 0 — Project Scaffold</strong><br>
+        This is a placeholder dashboard. The application factory, blueprints,
+        SQLite configuration, and Bootstrap integration are wired up and working.
+        Real ticket data, the status cards, and inline row expansion arrive in
+        Phase 1 (Data Layer) and Phase 2 (Manual Ticket Creation + Dashboard).
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle bg-white">
+            <thead>
+                <tr>
+                    <th>Ticket ID</th>
+                    <th>Title</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Source</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-4">
+                        No tickets yet — the ticket table renders here starting Phase 2.
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+{% endblock %}

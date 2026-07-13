@@ -1,0 +1,12 @@
+/* Minimal overrides on top of Bootstrap 5 — keep it light per project rules. */
+
+body {
+    background-color: #f5f6f8;
+}
+
+.card-title {
+    font-weight: 600;
+}
+
+/* Reserved for Phase 2+: expanded ticket row styling, inline-edit title field,
+   duplicate-badge styling, etc. */
