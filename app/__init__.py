@@ -3,9 +3,11 @@ Flask Application Factory.
 
 create_app() builds and returns a fully configured Flask app:
   - loads config from environment (.env)
-  - initializes extensions (db, scheduler)
-  - registers blueprints
-  - (Phase 6+) starts the APScheduler background sync job
+  - initializes the SQLAlchemy extension
+  - creates all tables via db.create_all() (no Flask-Migrate / Alembic --
+    this is a local single-PC SQLite app, migrations are unnecessary
+    complexity for the scope of this project)
+  - registers the single routes blueprint
 
 Kept deliberately simple per project rules: no auth, no cloud config,
 single SQLite file, single Windows PC deployment target.
@@ -17,7 +19,7 @@ from flask import Flask
 from dotenv import load_dotenv
 
 from app.config import config_by_name
-from app.extensions import db, scheduler
+from app.extensions import db
 
 load_dotenv()  # populate os.environ from .env before Config reads it
 
@@ -37,35 +39,13 @@ def create_app(config_name=None):
         db_path = os.path.join(app.instance_path, "cdoe.db")
         app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
 
-    _init_extensions(app)
-    _register_blueprints(app)
-
-    # APScheduler is wired up starting Phase 6, once email_service.sync_emails()
-    # exists. Left as a placeholder comment here so the factory's final shape
-    # is visible now:
-    #
-    # if not scheduler.running:
-    #     scheduler.add_job(
-    #         func=sync_emails_job,
-    #         trigger="interval",
-    #         minutes=app.config["SYNC_INTERVAL_MINUTES"],
-    #         id="email_sync_job",
-    #         replace_existing=True,
-    #     )
-    #     scheduler.start()
-
-    return app
-
-
-def _init_extensions(app):
     db.init_app(app)
 
+    with app.app_context():
+        from app import models  # noqa: F401  (import so db.create_all sees them)
+        db.create_all()
 
-def _register_blueprints(app):
-    from app.blueprints.dashboard import dashboard_bp
-    from app.blueprints.tickets import tickets_bp
-    from app.blueprints.email_sync import email_sync_bp
+    from app.routes import main_bp
+    app.register_blueprint(main_bp)
 
-    app.register_blueprint(dashboard_bp)
-    app.register_blueprint(tickets_bp)
-    app.register_blueprint(email_sync_bp)
+    return app
