@@ -6,12 +6,16 @@ internal tool with one working screen (the dashboard, per architecture),
 so splitting routes across multiple blueprint packages would be
 unnecessary structure for the amount of code involved.
 
-Phase 1 scope is data layer only: no ticket CRUD, no dashboard data, no
-timeline/remarks logic yet. The route below is unchanged from Phase 0 —
-it still renders the static placeholder page.
+Phase 2 scope: manual ticket creation, and listing existing tickets on the
+dashboard. Ticket-action endpoints (remarks, close, reopen, mark
+duplicate) and the email-sync endpoint are added to this same file in
+later phases.
 """
 
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, request, redirect, url_for, flash
+
+from app import services
+from app.models import Ticket
 
 main_bp = Blueprint("main", __name__)
 
@@ -21,8 +25,34 @@ def index():
     """
     The single working screen of the application.
 
-    Still a placeholder in Phase 1 — real ticket data, status cards, and
-    inline row expansion arrive starting Phase 2, once services.py has
-    ticket_service-style functions to query/create tickets.
+    Lists all existing tickets, newest first. Row expansion, remarks,
+    timeline display, and status actions (close/reopen/duplicate) are not
+    wired up yet — the expand button is present but inert until Phase 3.
     """
-    return render_template("dashboard/index.html")
+    tickets = Ticket.query.order_by(Ticket.created_at.desc()).all()
+    return render_template("dashboard/index.html", tickets=tickets)
+
+
+@main_bp.route("/tickets", methods=["POST"])
+def create_ticket():
+    """
+    Handle the "+ New Complaint" modal submission.
+
+    Source is always 'Manual' here — this endpoint is the only way a
+    Manual ticket gets created. Status is always 'New' (enforced inside
+    services.create_ticket, never taken from the form).
+    """
+    title = request.form.get("title", "").strip()
+    original_complaint = request.form.get("original_complaint", "").strip()
+
+    if not title or not original_complaint:
+        flash("Title and Original Complaint are both required.", "danger")
+        return redirect(url_for("main.index"))
+
+    services.create_ticket(
+        title=title,
+        original_complaint=original_complaint,
+        source="Manual",
+    )
+    flash("Ticket created successfully.", "success")
+    return redirect(url_for("main.index"))
