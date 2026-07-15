@@ -80,10 +80,73 @@
                     <td>{{ ticket.source }}</td>
                     <td>{{ ticket.created_at.strftime('%d %b %Y, %I:%M %p') }}</td>
                     <td class="text-end">
-                        <!-- Expand button: not functional yet, wired up in Phase 3 -->
-                        <button type="button" class="btn btn-sm btn-outline-secondary" disabled>
+                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#ticket-{{ ticket.id }}-details"
+                                aria-expanded="false"
+                                aria-controls="ticket-{{ ticket.id }}-details">
                             <i class="bi bi-chevron-down"></i> Expand
                         </button>
+                    </td>
+                </tr>
+                <tr>
+                    <!-- Always present in the DOM; Bootstrap's collapse plugin shows/hides
+                         the inner div. This avoids collapsing a <tr> directly, which has
+                         known display-mode quirks in Bootstrap 5. -->
+                    <td colspan="6" class="p-0 border-0">
+                        <div class="collapse" id="ticket-{{ ticket.id }}-details">
+                            <div class="p-3 bg-light border-top">
+
+                                <h6 class="text-muted text-uppercase small mb-2">Original Complaint</h6>
+                                <p class="mb-4">{{ ticket.original_complaint }}</p>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-4 mb-md-0">
+                                        <h6 class="text-muted text-uppercase small mb-2">Timeline</h6>
+                                        <ul class="list-unstyled mb-0">
+                                            {% for event in ticket.timeline_events|sort(attribute='created_at') %}
+                                            <li class="mb-2">
+                                                <span class="fw-semibold">{{ event.event }}</span>
+                                                {% if event.details %}<span class="text-muted"> — {{ event.details }}</span>{% endif %}
+                                                <br>
+                                                <span class="text-muted small">{{ event.created_at.strftime('%d %b %Y, %I:%M %p') }}</span>
+                                            </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="text-muted text-uppercase small mb-2">Remarks</h6>
+                                        {% for remark in ticket.remarks|sort(attribute='created_at') %}
+                                            <p class="mb-2">
+                                                {{ remark.body }}<br>
+                                                <span class="text-muted small">{{ remark.created_at.strftime('%d %b %Y, %I:%M %p') }}</span>
+                                            </p>
+                                        {% else %}
+                                            <p class="text-muted mb-0">No remarks yet.</p>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+
+                                <hr>
+
+                                <!-- Placeholder actions — not wired up yet (Phase 4/5) -->
+                                <div class="d-flex gap-2 flex-wrap">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" disabled>
+                                        <i class="bi bi-chat-left-text"></i> Add Remark
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-success" disabled>
+                                        <i class="bi bi-check-circle"></i> Close Ticket
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" disabled>
+                                        <i class="bi bi-arrow-counterclockwise"></i> Reopen Ticket
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary" disabled>
+                                        <i class="bi bi-files"></i> Mark as Duplicate
+                                    </button>
+                                </div>
+
+                            </div>
+                        </div>
                     </td>
                 </tr>
                 {% else %}

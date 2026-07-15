@@ -10,3 +10,11 @@ body {
 
 /* Reserved for Phase 2+: expanded ticket row styling, inline-edit title field,
    duplicate-badge styling, etc. */
+
+/* Rotate the expand chevron when Bootstrap's collapse plugin marks the
+   trigger button as expanded — purely cosmetic, no behavior change. */
+button[aria-expanded="true"] .bi-chevron-down {
+    transform: rotate(180deg);
+    display: inline-block;
+    transition: transform 0.15s ease-in-out;
+}
