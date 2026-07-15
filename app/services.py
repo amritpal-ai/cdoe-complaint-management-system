@@ -2,14 +2,18 @@
 Service layer — business logic lives here, kept separate from routes.py
 so route handlers stay thin (parse request -> call service -> respond).
 
-Phase 2 scope: manual ticket creation only.
+Phase 4 scope: manual ticket creation, and the remarks/timeline system.
 
-Functions added later (Phase 3+): add_remark(), close_ticket(),
-reopen_ticket(), mark_duplicate(), and (Phase 6) sync_emails().
+Functions added later: close_ticket(), reopen_ticket(), mark_duplicate(),
+and (Phase 6) sync_emails().
 """
 
 from app.extensions import db
-from app.models import Ticket, TimelineEvent
+from app.models import Ticket, TimelineEvent, Remark
+
+
+class TicketClosedError(Exception):
+    """Raised when a remark is attempted on a Closed ticket."""
 
 
 def log_event(ticket_id, event, details=None):
@@ -50,3 +54,47 @@ def create_ticket(title, original_complaint, source="Manual"):
 
     db.session.commit()
     return ticket
+
+
+def add_remark(ticket, body):
+    """
+    Add a remark to a ticket.
+
+    Rules (per ticket workflow):
+      - Closed tickets reject new remarks entirely — the caller must
+        reopen the ticket first. Raises TicketClosedError; no Remark or
+        TimelineEvent is written in that case.
+      - If this is the ticket's first remark (status == 'New'), status
+        automatically flips to 'In Progress' and a second 'Status
+        Changed' timeline entry is written recording the transition.
+      - If the ticket is already 'In Progress' (or 'Reopened' — handled
+        the same way once reopen exists), the remark is saved and a
+        timeline entry is written, but status is left unchanged.
+
+    Takes a Ticket instance (not an id) since the caller (route handler)
+    already looked it up via get_or_404 — avoids a second query.
+    """
+    if ticket.status == "Closed":
+        raise TicketClosedError(
+            "This ticket is closed. Reopen it before adding remarks."
+        )
+
+    body = body.strip()
+
+    remark = Remark(ticket_id=ticket.id, body=body)
+    db.session.add(remark)
+
+    log_event(ticket.id, event="Remark Added", details=body)
+
+    if ticket.status == "New":
+        old_status = ticket.status
+        ticket.status = "In Progress"
+        log_event(
+            ticket.id,
+            event="Status Changed",
+            details=f"{old_status} → In Progress",
+        )
+    # Already 'In Progress' (or any other non-Closed status): no status change.
+
+    db.session.commit()
+    return remark
