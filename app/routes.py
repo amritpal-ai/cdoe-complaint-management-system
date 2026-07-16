@@ -6,9 +6,9 @@ internal tool with one working screen (the dashboard, per architecture),
 so splitting routes across multiple blueprint packages would be
 unnecessary structure for the amount of code involved.
 
-Phase 4.5 scope: dashboard UI/UX cleanup on top of Phase 4's remarks/
-timeline system — no new business logic. Close/reopen/mark-duplicate and
-the email-sync endpoint are added to this same file in later phases.
+Phase 5 scope: adds the full ticket lifecycle (close, reopen, mark as
+duplicate) on top of ticket creation and the remarks/timeline system.
+The email-sync endpoint is added to this same file in a later phase.
 """
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash
@@ -106,6 +106,68 @@ def add_remark(ticket_id):
         services.add_remark(ticket, body)
         flash("Remark added.", "success")
     except services.TicketClosedError as e:
+        flash(str(e), "danger")
+
+    return redirect(url_for("main.index"))
+
+
+@main_bp.route("/tickets/<int:ticket_id>/close", methods=["POST"])
+def close_ticket(ticket_id):
+    """
+    Close a ticket. The "are you sure?" confirmation happens client-side
+    (a plain `confirm()` on the form, in the template) — by the time this
+    request arrives, the user has already confirmed.
+    """
+    ticket = Ticket.query.get_or_404(ticket_id)
+
+    try:
+        services.close_ticket(ticket)
+        flash(f"Ticket #{ticket.id} closed.", "success")
+    except services.InvalidTransitionError as e:
+        flash(str(e), "danger")
+
+    return redirect(url_for("main.index"))
+
+
+@main_bp.route("/tickets/<int:ticket_id>/reopen", methods=["POST"])
+def reopen_ticket(ticket_id):
+    """
+    Reopen a closed ticket. Only reachable from the Reopen button, which
+    the template only renders when the ticket's status is 'Closed'.
+    """
+    ticket = Ticket.query.get_or_404(ticket_id)
+
+    try:
+        services.reopen_ticket(ticket)
+        flash(f"Ticket #{ticket.id} reopened.", "success")
+    except services.InvalidTransitionError as e:
+        flash(str(e), "danger")
+
+    return redirect(url_for("main.index"))
+
+
+@main_bp.route("/tickets/<int:ticket_id>/mark-duplicate", methods=["POST"])
+def mark_duplicate(ticket_id):
+    """
+    Mark a ticket as a duplicate of another, selected from the
+    "Mark as Duplicate" modal's candidate list.
+    """
+    ticket = Ticket.query.get_or_404(ticket_id)
+
+    original_id = request.form.get("duplicate_of_ticket_id", type=int)
+    if not original_id:
+        flash("Please select a ticket to link as the original.", "danger")
+        return redirect(url_for("main.index"))
+
+    original_ticket = Ticket.query.get_or_404(original_id)
+
+    try:
+        services.mark_duplicate(ticket, original_ticket)
+        flash(
+            f"Ticket #{ticket.id} marked as a duplicate of Ticket #{original_ticket.id}.",
+            "success",
+        )
+    except services.InvalidTransitionError as e:
         flash(str(e), "danger")
 
     return redirect(url_for("main.index"))

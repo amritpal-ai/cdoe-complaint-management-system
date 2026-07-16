@@ -116,8 +116,8 @@
                          the inner div. This avoids collapsing a <tr> directly, which has
                          known display-mode quirks in Bootstrap 5.
 
-                         This is now a READING view only (Phase 4.5) — remark creation
-                         happens via the row-level "Add Remark" modal above, not here. -->
+                         This is a READING view — remark creation happens via the
+                         row-level "Add Remark" modal above, not here. -->
                     <td colspan="6" class="p-0 border-0">
                         <div class="collapse{{ ' show' if is_expanded else '' }}" id="ticket-{{ ticket.id }}-details">
                             <div class="p-3 bg-light border-top">
@@ -162,19 +162,35 @@
                                     </div>
                                 </div>
 
+                                {% if ticket.duplicate_of_ticket_id %}
+                                <div class="alert alert-secondary py-2 px-3 small mb-3">
+                                    This ticket was closed as a duplicate of
+                                    <strong>Ticket #{{ ticket.duplicate_of_ticket_id }}</strong>.
+                                </div>
+                                {% endif %}
+
                                 <hr>
 
-                                <!-- Placeholder actions — not wired up yet (Phase 5) -->
+                                <!-- Ticket lifecycle actions -->
                                 <div class="d-flex gap-2 flex-wrap">
-                                    <button type="button" class="btn btn-sm btn-outline-success" disabled>
-                                        <i class="bi bi-check-circle"></i> Close Ticket
-                                    </button>
-                                    <button type="button" class="btn btn-sm btn-outline-danger" disabled>
-                                        <i class="bi bi-arrow-counterclockwise"></i> Reopen Ticket
-                                    </button>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary" disabled>
-                                        <i class="bi bi-files"></i> Mark as Duplicate
-                                    </button>
+                                    {% if is_closed %}
+                                        <form method="POST" action="{{ url_for('main.reopen_ticket', ticket_id=ticket.id) }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                <i class="bi bi-arrow-counterclockwise"></i> Reopen Ticket
+                                            </button>
+                                        </form>
+                                    {% else %}
+                                        <form method="POST" action="{{ url_for('main.close_ticket', ticket_id=ticket.id) }}"
+                                              onsubmit="return confirm('Close Ticket #{{ ticket.id }}? This can be undone with Reopen.');">
+                                            <button type="submit" class="btn btn-sm btn-outline-success">
+                                                <i class="bi bi-check-circle"></i> Close Ticket
+                                            </button>
+                                        </form>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                data-bs-toggle="modal" data-bs-target="#markDuplicateModal-{{ ticket.id }}">
+                                            <i class="bi bi-files"></i> Mark as Duplicate
+                                        </button>
+                                    {% endif %}
                                 </div>
 
                             </div>
@@ -219,6 +235,56 @@
                     </div>
                 </div>
             </form>
+        </div>
+    </div>
+    {% endfor %}
+
+    <!-- Mark as Duplicate modals — one per ticket, only rendered for tickets
+         that aren't Closed (the button that opens these is hidden for
+         Closed tickets already, but the modal only needs to exist for
+         tickets where the action is reachable). -->
+    {% for ticket in tickets if ticket.status != 'Closed' %}
+    <div class="modal fade" id="markDuplicateModal-{{ ticket.id }}" tabindex="-1"
+         aria-labelledby="markDuplicateModalLabel-{{ ticket.id }}" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="markDuplicateModalLabel-{{ ticket.id }}">
+                        Mark Ticket #{{ ticket.id }} as Duplicate
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small">
+                        Select the original ticket this one duplicates. Only open tickets
+                        (New, In Progress, Reopened) are shown.
+                    </p>
+                    <input type="text" class="form-control mb-3"
+                           placeholder="Search by Ticket ID or Title..."
+                           oninput="filterDuplicateCandidates(this)">
+                    <div class="duplicate-candidate-list" style="max-height: 300px; overflow-y: auto;">
+                        {% set candidates = tickets|selectattr('id', 'ne', ticket.id)|selectattr('status', 'in', ['New', 'In Progress', 'Reopened'])|list %}
+                        {% for candidate in candidates %}
+                        <form method="POST" action="{{ url_for('main.mark_duplicate', ticket_id=ticket.id) }}"
+                              class="duplicate-candidate d-flex justify-content-between align-items-center py-2 border-bottom"
+                              data-search="#{{ candidate.id }} {{ candidate.title|lower }}">
+                            <div>
+                                <span class="fw-semibold">#{{ candidate.id }}</span>
+                                — {{ candidate.title }}
+                                <span class="badge text-bg-secondary ms-1">{{ candidate.status }}</span>
+                            </div>
+                            <input type="hidden" name="duplicate_of_ticket_id" value="{{ candidate.id }}">
+                            <button type="submit" class="btn btn-sm btn-outline-primary">Select</button>
+                        </form>
+                        {% else %}
+                        <p class="text-muted mb-0">No other open tickets available to link.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                </div>
+            </div>
         </div>
     </div>
     {% endfor %}
